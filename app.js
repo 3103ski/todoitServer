@@ -1,14 +1,30 @@
 var createError = require('http-errors');
+const mongoose = require('mongoose');
 var express = require('express');
 var path = require('path');
-var cookieParser = require('cookie-parser');
 var logger = require('morgan');
+const config = require('./config');
+const passport = require('passport');
 
 // ROUTES
 const indexRouter = require('./routes/index');
 const usersRouter = require('./routes/users');
 const todosRouter = require('./routes/todos');
 const todoListsRouter = require('./routes/todoLists');
+
+const url = config.mongoUrl;
+
+const connect = mongoose.connect(url, {
+	useCreateIndex: true,
+	useFindAndModify: false,
+	useNewUrlParser: true,
+	useUnifiedTopology: true,
+});
+
+connect.then(
+	() => console.log('Connected correctly to the server'),
+	(err) => console.log(err)
+);
 
 var app = express();
 
@@ -19,10 +35,14 @@ app.set('view engine', 'jade');
 app.use(logger('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
-app.use(cookieParser());
+
+app.use(passport.initialize());
+
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.use('/', indexRouter);
+
+// API endpoints
 app.use('/users', usersRouter);
 app.use('/todos', todosRouter);
 app.use('/todoLists', todoListsRouter);

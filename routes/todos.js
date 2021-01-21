@@ -1,22 +1,35 @@
 var express = require('express');
 var todosRouter = express.Router();
+const Todo = require('../models/todo');
 
 todosRouter
 	.route('/')
 	.get((req, res, next) => {
-		res.statusCode = 200;
-		res.setHeader('Content-Type', 'application/json');
-		res.end('Will return all todos');
+		Todo.find()
+			.then((todos) => {
+				res.statusCode = 200;
+				res.setHeader('Content-Type', 'application/json');
+				res.json(todos);
+			})
+			.catch((err) => next(err));
 	})
 	.post((req, res, next) => {
-		res.statusCode = 200;
-		res.setHeader('Content-Type', 'application/json');
-		res.end('Will create new todo');
+		Todo.create(req.body)
+			.then((todo) => {
+				res.statusCode = 200;
+				res.setHeader('Content-Type', 'application/json');
+				res.json(todo);
+			})
+			.catch((err) => next(err));
 	})
 	.delete((req, res, next) => {
-		res.statusCode = 200;
-		res.setHeader('Content-Type', 'application/json');
-		res.end('Is deleting all todos');
+		Todo.deleteMany()
+			.then((response) => {
+				res.statusCode = 200;
+				res.setHeader('Content-Type', 'application/json');
+				res.json(response);
+			})
+			.catch((err) => next(err));
 	})
 	.put((req, res) => {
 		res.statusCode = 403;
@@ -26,14 +39,22 @@ todosRouter
 todosRouter
 	.route('/collection/:listID')
 	.get((req, res, next) => {
-		res.statusCode = 200;
-		res.setHeader('Content-Type', 'application/json');
-		res.end(`will return all todos for list with ID: ${req.params.todoID}`);
+		Todo.find({ todoListID: req.params.listID })
+			.then((todos) => {
+				res.statusCode = 200;
+				res.setHeader('Content-Type', 'application/json');
+				res.json(todos);
+			})
+			.catch((err) => next(err));
 	})
 	.delete((req, res, next) => {
-		res.statusCode = 200;
-		res.setHeader('Content-Type', 'application/json');
-		res.end(`Will delete all todos associated with todo list ID: ${req.params.todoID}`);
+		Todo.deleteMany({ todoListID: req.params.listID })
+			.then((response) => {
+				res.statusCode = 200;
+				res.setHeader('Content-Type', 'application/json');
+				res.json(response);
+			})
+			.catch((err) => next(err));
 	})
 	.post((req, res) => {
 		res.statusCode = 403;
@@ -47,6 +68,7 @@ todosRouter
 todosRouter
 	.route('/:todoID')
 	.get((req, res, next) => {
+		Todo.findById();
 		res.statusCode = 200;
 		res.setHeader('Content-Type', 'application/json');
 		res.end(`will return todo with ID ${req.params.todoID}`);
