@@ -45,7 +45,7 @@ app.use('/', indexRouter);
 // API endpoints
 app.use('/users', usersRouter);
 app.use('/todos', todosRouter);
-app.use('/todoLists', todoListsRouter);
+app.use('/todo-lists', todoListsRouter);
 
 // catch 404 and forward to error handler
 app.use(function (req, res, next) {

@@ -1,46 +1,103 @@
 var express = require('express');
 var todoListsRouter = express.Router();
+const TodoList = require('../models/todoList');
+const Todo = require('../models/todo');
+const cors = require('./cors');
+const auth = require('../authenticate');
 
 todoListsRouter
 	.route('/')
-	.get((req, res, next) => {
-		res.statusCode = 200;
-		res.setHeader('Content-Type', 'application/json');
-		res.end('Will return all todo lists');
+	.options(cors.corsWithOptions, (req, res) => res.sendStatus(200))
+	.get(cors.cors, auth.verifyUser, auth.verifyAdmin, (req, res, next) => {
+		TodoList.find()
+			.then((lists) => {
+				res.statusCode = 200;
+				res.setHeader('Content-Type', 'application/json');
+				res.json(lists);
+			})
+			.catch((err) => next(err));
 	})
-	.post((req, res, next) => {
-		res.statusCode = 200;
-		res.setHeader('Content-Type', 'application/json');
-		res.end('Will create new todo list');
+	.post(cors.corsWithOptions, auth.verifyUser, (req, res, next) => {
+		req.body.user = req.user._id;
+		TodoList.create(req.body)
+			.then((todoList) => {
+				res.statusCode = 200;
+				res.setHeader('Content-Type', 'application/json');
+				res.json(todoList);
+			})
+			.catch((err) => next(err));
 	})
-	.delete((req, res, next) => {
-		res.statusCode = 200;
-		res.setHeader('Content-Type', 'application/json');
-		res.end('Is deleting all todo lists');
+	.delete(cors.corsWithOptions, auth.verifyUser, auth.verifyAdmin, (req, res, next) => {
+		TodoList.deleteMany()
+			.then((response) => {
+				Todo.deleteMany()
+					.then((response) => {
+						res.statusCode = 200;
+						res.setHeader('Content-Type', 'application/json');
+						res.json(response);
+					})
+					.catch((err) => next(err));
+			})
+			.catch((err) => next(err));
 	})
-	.put((req, res) => {
+	.put(cors.corsWithOptions, auth.verifyUser, (req, res) => {
 		res.statusCode = 403;
 		res.end('Not supported at this endpoint');
 	});
 
 todoListsRouter
 	.route('/:todoListID')
-	.get((req, res, next) => {
-		res.statusCode = 200;
-		res.setHeader('Content-Type', 'application/json');
-		res.end(`will return todo list with ID ${req.params.todoListID}`);
+	.options(cors.corsWithOptions, (req, res) => res.sendStatus(200))
+	.get(cors.cors, auth.verifyUser, (req, res, next) => {
+		TodoList.findById(req.params.todoListID)
+			.then((todoList) => {
+				if (todoList.user.equals(req.user._id) || req.user.isAdmin) {
+					res.statusCode = 200;
+					res.setHeader('Content-Type', 'application/json');
+					res.json(todoList);
+				} else {
+					res.statusCode = 403;
+					res.end('You do not have access to this list.');
+				}
+			})
+			.catch((err) => next(err));
 	})
-	.delete((req, res, next) => {
-		res.statusCode = 200;
-		res.setHeader('Content-Type', 'application/json');
-		res.end(`Will delete todo list with ID ${req.params.todoListID}`);
+	.delete(cors.corsWithOptions, auth.verifyUser, (req, res, next) => {
+		TodoList.findById(req.params.todoListID)
+			.then((todoList) => {
+				if (todoList.user.equals(req.user._id) || req.user.isAdmin) {
+					TodoList.findByIdAndDelete(req.params.todoListID)
+						.then(
+							Todo.deleteMany({ todoListID: todoList._id })
+								.then((response) => {
+									res.statusCode = 200;
+									res.setHeader('Content-Type', 'application/json');
+									res.json(response);
+								})
+								.catch((err) => next(err))
+						)
+						.catch((err) => next(err));
+				}
+			})
+			.catch((err) => next(err));
 	})
-	.put((req, res, next) => {
-		res.statusCode = 200;
-		res.setHeader('Content-Type', 'application/json');
-		res.end(`Will update todo list with ID ${req.params.todoListID}`);
+	.put(cors.corsWithOptions, auth.verifyUser, (req, res, next) => {
+		TodoList.findById(req.params.todoListID)
+			.then((todoList) => {
+				if (todoList.user.equals(req.user._id)) {
+					todoList = req.body;
+					todoList.save();
+					res.statusCode = 200;
+					res.setHeader('Content-Type', 'application/json');
+					res.json(todoList);
+				} else {
+					res.statusCode = 403;
+					res.end('This todoList does not belong tot he authenticated user.');
+				}
+			})
+			.catch((err) => next(err));
 	})
-	.post((req, res) => {
+	.post(cors.corsWithOptions, auth.verifyUser, (req, res) => {
 		res.statusCode = 403;
 		res.end('you cannot POST to this endpoint');
 	});

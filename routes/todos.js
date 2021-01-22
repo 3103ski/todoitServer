@@ -19,29 +19,30 @@ todosRouter
 			.catch((err) => next(err));
 	})
 	.post(cors.corsWithOptions, auth.verifyUser, (req, res, next) => {
-		req.body.user = req.user._id;
-		const todoList = TodoList.findById(req.body.todoListID)
+		req.body.user = req.user;
+		TodoList.find({ _id: req.body.todoListID })
 			.then((list) => {
-				if (list) {
-					return list;
+				if (list[0] && list[0].user.equals(req.user._id)) {
+					Todo.create(req.body)
+						.then((todo) => {
+							res.statusCode = 200;
+							res.setHeader('Content-Type', 'application/json');
+							res.json(todo);
+						})
+						.catch((err) => next(err));
 				} else {
-					res.statusCode = 404;
-					res.end('You are trying to add to a todo list that does not exist');
+					res.statusCode = 500;
+					res.end('The list ID was valid but there is an issue with the data it found.');
 				}
 			})
-			.catch((err) => next(err));
-		if (todoList.user.equals(req.user._id)) {
-			Todo.create(req.body)
-				.then((todo) => {
-					res.statusCode = 200;
-					res.setHeader('Content-Type', 'application/json');
-					res.json(todo);
-				})
-				.catch((err) => next(err));
-		} else {
-			res.statusCode = 403;
-			res.end('You are attempting to add to a list that does not belong to the user');
-		}
+			.catch((err) => {
+				res.statusCode = 404;
+				res.setHeader('Content-Type', 'application/json');
+				res.json({
+					mongooseErr: err,
+					errMsg: 'You are trying to add a list item to a list that does not exist',
+				});
+			});
 	})
 	.delete(cors.corsWithOptions, auth.verifyUser, auth.verifyAdmin, (req, res, next) => {
 		Todo.deleteMany()
@@ -138,9 +139,24 @@ todosRouter
 			.catch((err) => next(err));
 	})
 	.put((req, res, next) => {
-		res.statusCode = 200;
-		res.setHeader('Content-Type', 'application/json');
-		res.end(`Will update todo with ID ${req.params.todoID}`);
+		Todo.findById(req.params.todoID)
+			.then((todo) => {
+				if (todo.user.equals(req.user._id)) {
+					todo = req.body;
+					todo.save((err) => {
+						res.statusCode = 500;
+						res.setHeader('Content-Type', 'application/json');
+						res.json({ error: err });
+					});
+					res.statusCode = 200;
+					res.setHeader('Content-Type', 'application/json');
+					res.json(todo);
+				} else {
+					res.statusCode = 403;
+					res.end('This todo does not belong tot he authenticated user.');
+				}
+			})
+			.catch((err) => next(err));
 	})
 	.post((req, res) => {
 		res.statusCode = 403;

@@ -9,7 +9,7 @@ const todoListSchema = new Schema(
 		},
 		description: {
 			type: String,
-			required: true,
+			default: '',
 		},
 		todos: {
 			type: Array,
